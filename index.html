@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABAP Dialog Programming Quiz</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#18233b;background:#f4f6fb;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0}
+.top{background:#172554;color:white;padding:24px max(calc((100% - 980px)/2),24px)}
+.top h1{margin:0 0 5px;font-size:24px}
+.top p{margin:0;color:#c7d2fe}
+.layout{max-width:980px;margin:24px auto;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:20px}
+.card{background:#fff;border:1px solid #e1e6f0;border-radius:14px;padding:22px;box-shadow:0 5px 20px #1725540a}
+.question{margin-bottom:16px;font-weight:650;line-height:1.5}
+.hint{font-size:13px;color:#667085;margin:0 0 15px}
+.option{display:flex;gap:12px;padding:12px;border:1px solid #e4e8f0;border-radius:9px;margin:8px 0;cursor:pointer;line-height:1.4}
+.option:hover{background:#f8faff}
+.option input{accent-color:#4f46e5;margin-top:2px}
+.controls{display:flex;justify-content:space-between;gap:8px;margin-top:20px}
+.btn{border:0;border-radius:9px;padding:11px 16px;font-weight:650;cursor:pointer}
+.primary{background:#4f46e5;color:#fff}
+.secondary{background:#eef2ff;color:#3730a3}
+.quiet{background:#f1f3f7;color:#344054}
+.side{position:sticky;top:16px;height:max-content}
+.timer{font-size:29px;font-variant-numeric:tabular-nums;font-weight:750;margin:8px 0;color:#172554}
+.progress{height:8px;background:#edf0f6;border-radius:10px;overflow:hidden}
+.progress i{display:block;height:100%;background:#4f46e5;transition:width .2s}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:14px}
+.qnum{height:36px;border:1px solid #dce2ec;background:#fff;border-radius:8px;cursor:pointer;color:#344054}
+.qnum.current{outline:2px solid #4f46e5}
+.qnum.answered{background:#e9e7ff;border-color:#c7c3ff}
+.qnum.review{box-shadow:inset 0 -4px #f59e0b}
+.legend{font-size:12px;color:#667085;line-height:1.8;margin-top:12px}
+.hide{display:none!important}
+.result{text-align:center;padding:34px 20px}
+.score{font-size:54px;font-weight:800;color:#172554;margin:12px}
+.badge{display:inline-block;padding:7px 12px;border-radius:30px;font-weight:700}
+.pass{background:#dcfce7;color:#166534}
+.fail{background:#fee2e2;color:#991b1b}
+.review-item{text-align:left;border-top:1px solid #e7eaf0;padding:16px 0;line-height:1.5}
+.correct{color:#16803c}
+.wrong{color:#b42318}
+.review-item ul{margin:8px 0;padding-left:22px}
+.status{font-size:13px;color:#667085;margin-top:12px}
+@media(max-width:720px){
+  .layout{grid-template-columns:1fr}
+  .side{position:static;order:-1}
+  .grid{grid-template-columns:repeat(10,1fr)}
+  .top{padding:20px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>ABAP Dialog Programming</h1>
+  <p>Knowledge check · 30 questions · 20 minutes · 90% to pass</p>
+</header>
+
+<main class="layout" id="quizLayout">
+  <section class="card" id="questionCard"></section>
+  <aside class="card side">
+    <b>Quiz progress</b>
+    <div class="timer" id="timer">20:00</div>
+    <div class="progress"><i id="progress"></i></div>
+    <div class="status" id="answeredCount"></div>
+    <div class="grid" id="nav"></div>
+    <div class="legend">🟪 Answered &nbsp; 🟨 Marked for review</div>
+    <button class="btn primary" style="width:100%;margin-top:17px" id="submit">Submit quiz</button>
+  </aside>
+</main>
+
+<main class="layout hide" id="resultLayout">
+  <section class="card result" id="result"></section>
+</main>
+
+<script>
+const raw=[
+['You need a transaction-driven application containing several dynpros. The program should be started through a transaction code rather than directly with F8. Which program type should you create?','Module Pool Program','Executable Program','Include Program','Function Module'],
+['Which statements correctly describe a Module Pool / Dialog Program?','It is generally transaction-driven|It can contain multiple screens|Its screens are designed using Screen Painter','It is generally transaction-driven','It can contain multiple screens','Its screens are designed using Screen Painter','It must contain START-OF-SELECTION','It is normally started directly with F8'],
+['A screen displays customer information retrieved from the database immediately before the screen becomes visible. Where should this logic normally be placed?','PBO','PAI','POV','POH'],
+['Which situations are associated with PAI?','Processing a button\'s function code|Validating user input|Processing user input before leaving a screen','Processing a button\'s function code','Validating user input','Processing user input before leaving a screen','Preparing screen fields before display','Processing F4 value help'],
+['The user presses F4 on a screen field. Which Flow Logic event is designed for this?','POV','PAI','PBO','POH'],
+['The user presses F1 on a screen field. Which event should be investigated?','POH','POV','PAI','PBO'],
+['Which statements about PBO and PAI are correct?','PBO occurs before screen output|PAI processes input from the user|Database data can be prepared in PBO|Button function codes are normally processed in PAI','PBO occurs before screen output','PAI processes input from the user','Database data can be prepared in PBO','Button function codes are normally processed in PAI','F4 processing belongs exclusively to PAI'],
+['A button on screen 1000 has function code NEXT. After clicking it, the program should navigate to screen 2000. Which statement is directly used to call the screen?','CALL SCREEN 2000','CALL PROGRAM 2000','OPEN SCREEN 2000','START SCREEN 2000'],
+['Which statements correctly describe screen navigation?','CALL SCREEN 2000 can call a specific screen|LEAVE TO SCREEN 0 can be used to return to the previous screen|LEAVE PROGRAM terminates the program|LEAVE TO LIST-PROCESSING moves to list processing','CALL SCREEN 2000 can call a specific screen','LEAVE TO SCREEN 0 can be used to return to the previous screen','LEAVE PROGRAM terminates the program','LEAVE TO LIST-PROCESSING moves to list processing','CALL SCREEN 0 is the standard way to terminate the application'],
+['A user clicks an Exit button, but mandatory-field validations are preventing the user from leaving the screen. Which combination is intended for bypassing normal screen validation?','Function type E + AT EXIT-COMMAND','Function type P + AT USER-COMMAND','Function type S + POV','Function type E + PBO'],
+['Which statements about a table control are correct?','It is used to display internal-table data in table format|PBO can transfer internal-table data toward the screen|PAI can transfer changed screen values back into the internal table','It is used to display internal-table data in table format','PBO can transfer internal-table data toward the screen','PAI can transfer changed screen values back into the internal table','It requires no LOOP processing','It is the same thing as a database table'],
+['A table control displays data correctly when the screen opens, but user changes are not being transferred back into the internal table. Which area should be investigated first?','PAI LOOP','PBO LOOP','POV','POH'],
+['Which statements about Tabstrip and Subscreens are correct?','Tabstrip can be used to handle multiple subscreens|Different tabs can display different subscreens|A main screen can contain subscreen areas|PBO/PAI processing may be involved in switching/displaying tab content','Tabstrip can be used to handle multiple subscreens','Different tabs can display different subscreens','A main screen can contain subscreen areas','Each subscreen must be a separate executable program','PBO/PAI processing may be involved in switching/displaying tab content'],
+['Main screen 6000 contains Tab 1 and Tab 2. Tab 1 should show screen 6100, while Tab 2 should show 6200. What are 6100 and 6200 most likely being used as?','Subscreens','Function groups','Database tables','Selection-screen blocks'],
+['A screen field needs validation in PAI. Which statements are relevant?','FIELD fieldname MODULE modulename|Validation logic can be placed in the corresponding module|CHAIN ... ENDCHAIN can group related field validation','FIELD fieldname MODULE modulename','Validation logic can be placed in the corresponding module','CHAIN ... ENDCHAIN can group related field validation','PBO is mandatory for every validation','FIELD validation automatically performs an Open SQL SELECT'],
+['A PAI validation produces an error and related fields need to remain available for correction. Which technique should be considered?','CHAIN ... ENDCHAIN','HIDE ... GET CURSOR','FOR ALL ENTRIES','DELETE ADJACENT DUPLICATES'],
+['Which transactions/tools are relevant to Module Pool/Dialog Programming?','SE38 — ABAP Editor/Main Program|SE51 — Screen Painter|SE41 — Menu Painter|SE93 — Transaction Code|SE91 — Message Class','SE38 — ABAP Editor/Main Program','SE51 — Screen Painter','SE41 — Menu Painter','SE93 — Transaction Code','SE91 — Message Class'],
+['A screen is designed with database-table fields, and the developer wants the corresponding database-table work area available in the main program. Which keyword is relevant?','TABLES','HIDE','SCREEN','CHAIN'],
+['Which statements about Flow Logic are correct?','PBO means Process Before Output|PAI means Process After Input|POV is related to F4/value request|POH is related to F1/help request','PBO means Process Before Output','PAI means Process After Input','POV is related to F4/value request','POH is related to F1/help request','Flow Logic supports the complete unrestricted ABAP syntax'],
+['A developer wants complex logic that cannot conveniently be written directly in the limited Flow Logic syntax. Where should the logic generally be implemented?','Main ABAP program inside modules','SE93','Database table','Menu Painter only'],
+['A screen contains header information from VBAK and item information from VBAP. The header displays correctly, but the item tab is blank. Which areas are reasonable to investigate?','Whether VBAP data was selected correctly|Whether the item internal table/work area contains data|Whether the correct subscreen is being displayed|Whether item data is transferred during the relevant PBO processing','Whether VBAP data was selected correctly','Whether the item internal table/work area contains data','Whether the correct subscreen is being displayed','Whether item data is transferred during the relevant PBO processing','Whether TOP-OF-PAGE is executing'],
+['Which statements about Message Classes are correct?','They provide centrally maintained messages|They can contain numbered messages|They are maintained using SE91|They are useful for avoiding repeated hardcoded message text','They provide centrally maintained messages','They can contain numbered messages','They are maintained using SE91','They are useful for avoiding repeated hardcoded message text','They are used to design dynpro layouts'],
+['Message class ZMSG contains: 001 Customer & does not exist. Which statement correctly supplies a customer number dynamically?','MESSAGE E001(ZMSG) WITH lv_kunnr.','MESSAGE ZMSG-001 WITH lv_kunnr.','MESSAGE lv_kunnr TYPE ZMSG.','MESSAGE 001 FROM ZMSG WITH lv_kunnr.'],
+['A PAI validation detects invalid input. Which message types could be relevant depending on the desired behavior?','E|W|I|S','E','W','I','S','X'],
+['You want to retrieve multiple records from VBAK into an internal table. SELECT * FROM vbak INTO TABLE it_vbak WHERE kunnr = p_kunnr. What does INTO TABLE indicate here?','Multiple selected records are placed into the internal table','Only one record is selected','The database table is updated','Data is transferred directly to a screen'],
+['Consider SELECT * FROM knbk INTO TABLE it_knbk FOR ALL ENTRIES IN it_kna1 WHERE kunnr = it_kna1-kunnr. Which statements are correct?','IT_KNA1 acts as the driving internal table|It should be checked whether IT_KNA1 is initial before the SELECT|The condition uses values from IT_KNA1|It can be used to retrieve related records','IT_KNA1 acts as the driving internal table','It should be checked whether IT_KNA1 is initial before the SELECT','The condition uses values from IT_KNA1','It is unrelated to database selection','It can be used to retrieve related records'],
+['An internal table contains customer records, and the developer wants to remove duplicate customer numbers that are next to each other. Which statement is appropriate?','DELETE ADJACENT DUPLICATES FROM itab COMPARING kunnr','DELETE DUPLICATES FROM itab','REMOVE DUPLICATES itab','CLEAR DUPLICATES itab'],
+['Which statements correctly describe GET CURSOR in an interactive report?','It can retrieve the field under the cursor|It can retrieve the value under the cursor|It can be used inside AT USER-COMMAND|It can help determine what the user selected before executing custom logic','It can retrieve the field under the cursor','It can retrieve the value under the cursor','It can be used inside AT USER-COMMAND','It can help determine what the user selected before executing custom logic','It is used to validate screen fields during PAI'],
+['A user places the cursor on a sales-order number in an interactive list and presses a custom DISPLAY button. The program needs that exact value before selecting related VBAP data. Which sequence is most appropriate?','AT USER-COMMAND → GET CURSOR → Open SQL','PBO → POV → GET CURSOR','AT SELECTION-SCREEN → HIDE → PAI','INITIALIZATION → CHAIN → Open SQL'],
+['A developer wants to build an application combining an interactive report and a module-pool screen. Which concepts could legitimately be involved depending on the design?','AT USER-COMMAND|GET CURSOR|PBO/PAI|CALL SCREEN|Message Class|FOR ALL ENTRIES','AT USER-COMMAND','GET CURSOR','PBO/PAI','CALL SCREEN','Message Class','FOR ALL ENTRIES','TOP-OF-PAGE is mandatory for every module-pool screen']
+];
+
+const questions=raw.map(r=>({
+  text:r[0],
+  options:r.slice(1).filter(Boolean),
+  answers:new Set((r[1].includes('|')?r[1].split('|'):[r[1]]))
+}));
+
+let idx=0;
+let answers=questions.map(()=>new Set());
+let marked=new Set();
+let remaining=1200;
+let done=false;
+let tick;
+const card=document.querySelector('#questionCard');
+
+function render(){
+  let q=questions[idx],multiple=q.answers.size>1;
+  card.innerHTML=`<div class="status">Question ${idx+1} of ${questions.length}</div>
+  <div class="question">${q.text}</div>
+  <p class="hint">${multiple?'Select all that apply.':'Select one answer.'}</p>
+  ${q.options.map((o,i)=>`<label class="option">
+    <input type="${multiple?'checkbox':'radio'}" name="answer-${idx}" data-i="${i}" ${answers[idx].has(o)?'checked':''}>
+    <span>${String.fromCharCode(65+i)}. ${o}</span>
+  </label>`).join('')}
+  <div class="controls">
+    <button class="btn quiet" id="prev" ${idx===0?'disabled':''}>← Previous</button>
+    <button class="btn secondary" id="mark">${marked.has(idx)?'★ Marked for review':'☆ Mark for review'}</button>
+    <button class="btn primary" id="next">${idx===questions.length-1?'Finish':'Next →'}</button>
+  </div>`;
+
+  card.querySelectorAll('input').forEach(input=>input.onchange=()=>{
+    let v=q.options[+input.dataset.i];
+    if(input.type==='radio'){
+      answers[idx].clear();
+      answers[idx].add(v);
+    }else{
+      input.checked?answers[idx].add(v):answers[idx].delete(v);
+    }
+    update();
+  });
+
+  card.querySelector('#prev').onclick=()=>{idx--;render()};
+  card.querySelector('#next').onclick=()=>{
+    if(idx<questions.length-1){idx++;render()}
+    else submit();
+  };
+  card.querySelector('#mark').onclick=()=>{
+    marked.has(idx)?marked.delete(idx):marked.add(idx);
+    render();
+  };
+  update();
+}
+
+function update(){
+  document.querySelector('#progress').style.width=
+    `${answers.filter(a=>a.size).length/questions.length*100}%`;
+  document.querySelector('#answeredCount').textContent=
+    `${answers.filter(a=>a.size).length} of ${questions.length} answered`;
+  document.querySelector('#nav').innerHTML=questions.map((_,i)=>
+    `<button class="qnum ${i===idx?'current':''} ${answers[i].size?'answered':''} ${marked.has(i)?'review':''}"
+      data-n="${i}" aria-label="Question ${i+1}${marked.has(i)?', marked for review':''}">${i+1}</button>`
+  ).join('');
+  document.querySelectorAll('.qnum').forEach(b=>b.onclick=()=>{
+    idx=+b.dataset.n;
+    render();
+  });
+}
+
+function submit(){
+  if(done)return;
+  done=true;
+  clearInterval(tick);
+
+  let score=questions.reduce((n,q,i)=>
+    n+(q.answers.size===answers[i].size&&[...q.answers].every(a=>answers[i].has(a))?1:0),0);
+  let pct=Math.round(score/questions.length*100);
+
+  document.querySelector('#quizLayout').classList.add('hide');
+  let out=document.querySelector('#resultLayout');
+  out.classList.remove('hide');
+
+  document.querySelector('#result').innerHTML=`
+    <div class="status">Quiz submitted${remaining===0?' · Time expired':''}</div>
+    <h2>${pct>=90?'Congratulations!':'Keep practicing'}</h2>
+    <div class="score">${pct}%</div>
+    <div class="badge ${pct>=90?'pass':'fail'}">${pct>=90?'PASSED':'NOT PASSED'} · ${score} / ${questions.length}</div>
+    <p>Passing score: 90% (27 of 30 correct)</p>
+    <button class="btn primary" id="retake">Retake quiz</button>
+    <h3 style="text-align:left;margin-top:32px">Answer review</h3>
+    ${questions.map((q,i)=>{
+      let ok=q.answers.size===answers[i].size&&[...q.answers].every(a=>answers[i].has(a));
+      return `<article class="review-item">
+        <b>Q${i+1} ${marked.has(i)?'★ Marked for review · ':''}
+          <span class="${ok?'correct':'wrong'}">${ok?'Correct':'Incorrect'}</span>
+        </b>
+        <div>${q.text}</div>
+        <div><b>Correct answers:</b> ${[...q.answers]
+          .map(x=>q.options.indexOf(x))
+          .map(x=>String.fromCharCode(65+x)).join(', ')}</div>
+      </article>`;
+    }).join('')}`;
+
+  document.querySelector('#retake').onclick=()=>{
+    idx=0;
+    answers=questions.map(()=>new Set());
+    marked=new Set();
+    remaining=1200;
+    done=false;
+    out.classList.add('hide');
+    document.querySelector('#quizLayout').classList.remove('hide');
+    render();
+    clock();
+  };
+}
+
+function clock(){
+  clearInterval(tick);
+  tick=setInterval(()=>{
+    remaining--;
+    document.querySelector('#timer').textContent=
+      `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
+    if(remaining<=0){
+      remaining=0;
+      submit();
+    }
+  },1000);
+}
+
+document.querySelector('#submit').onclick=()=>{
+  let empty=answers.filter(a=>!a.size).length;
+  if(empty&&!confirm(`${empty} question(s) are unanswered. Submit anyway?`))return;
+  submit();
+};
+render();
+clock();
+</script>
+</body>
+</html>
